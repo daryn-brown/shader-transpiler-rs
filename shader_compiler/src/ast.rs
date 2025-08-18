@@ -4,7 +4,7 @@
 // hierarchy and meaning, decoupled from the raw source text.
 
 // Using Debug trait to allow printing the AST for inspection.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Float,
     Int,

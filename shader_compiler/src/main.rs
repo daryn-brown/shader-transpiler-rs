@@ -3,6 +3,7 @@
 
 // Use a module to hold the AST definitions.
 pub mod ast;
+pub mod semantic;
 
 // This line includes the Rust code that LALRPOP generates from our
 // shader.lalrpop grammar file. The `#[allow]` attributes are to
@@ -32,10 +33,25 @@ fn main() {
 
     // Parse the source code.
     match parser.parse(source_code) {
-        Ok(ast) => {
+        Ok(parsed_ast) => {
             println!("\nSuccessfully parsed into AST!");
             // The `:#?` format specifier pretty-prints the debug output.
-            println!("{:#?}", ast);
+            println!("{:#?}", parsed_ast);
+
+            println!("\n--- Phase 2: Semantic Analysis ---");
+            // Create an instance of our new analyzer.
+            let mut analyzer = semantic::SemanticAnalyzer::new();
+
+            // Run the analysis.
+            match analyzer.analyze(&parsed_ast) {
+                Ok(_) => {
+                    println!("\nSemantic analysis passed!");
+                }
+                Err(e) => {
+                    println!("\nSemantic analysis failed!");
+                    println!("Error: {}", e);
+                }
+            }
         }
         Err(e) => {
             println!("\nFailed to parse!");
