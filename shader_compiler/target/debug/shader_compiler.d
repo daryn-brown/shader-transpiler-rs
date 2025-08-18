@@ -1,0 +1,1 @@
+D:\Projects\shader-transpiler-rs\shader_compiler\target\debug\shader_compiler.exe: D:\Projects\shader-transpiler-rs\shader_compiler\build.rs D:\Projects\shader-transpiler-rs\shader_compiler\src\ast.rs D:\Projects\shader-transpiler-rs\shader_compiler\src\main.rs D:\Projects\shader-transpiler-rs\shader_compiler\target\debug\build\shader_compiler-3675e56bb055834a\out\shader.rs

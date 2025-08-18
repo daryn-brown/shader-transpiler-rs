@@ -1,0 +1,172 @@
+// This is the core grammar file for our parser, written in LALRPOP's syntax.
+// It defines both the tokens (lexing) and the grammatical rules (parsing).
+
+use crate::ast::*;
+
+// The grammar will generate a parser for a FunctionDefinition.
+grammar;
+
+// Import the AST types so we can use them in our parsing actions.
+use crate::ast::{BinaryOp, Expression, Statement, Type, FunctionDefinition, Parameter};
+
+// Define the tokens (terminals) for our lexer using regular expressions.
+// LALRPOP's lexer will generate a tokenizer from these rules.
+match {
+    // Keywords
+    "if",
+    "else", 
+    "float",
+    "int",
+    "bool",
+    "true",
+    "false",
+
+    // Literals and Identifiers
+    // This rule must come AFTER keywords. The lexer tries rules in order.
+    r"[a-zA-Z_][a-zA-Z_0-9]*",
+    r"[0-9]+\.[0-9]+",
+    r"[0-9]+",
+
+    // Operators and Punctuation
+    "+",
+    "-",
+    "*",
+    "/",
+    "=",
+    "==",
+    "!=",
+    "<",
+    ">",
+    "<=",
+    ">=",
+    "(",
+    ")",
+    "{",
+    "}",
+    ";",
+    ",",
+
+    // Ignore whitespace
+    r"\s*" => { },
+}
+
+// Define the parsing rules (non-terminals).
+// The `pub` keyword makes the rule accessible from our Rust code.
+pub TranslationUnit: FunctionDefinition = FunctionDefinition;
+
+FunctionDefinition: FunctionDefinition = {
+    <return_type:Type> <name:r"[a-zA-Z_][a-zA-Z_0-9]*"> "(" <params:ParamList?> ")" "{" <body:StatementList> "}" => FunctionDefinition {
+        return_type,
+        name: name.to_string(),
+        params: params.unwrap_or_default(),
+        body,
+    }
+};
+
+ParamList: Vec<Parameter> = {
+    <p:Parameter> => vec![p],
+    <mut list:ParamList> "," <p:Parameter> => { list.push(p); list }
+};
+
+Parameter: Parameter = {
+    <type_name:Type> <name:r"[a-zA-Z_][a-zA-Z_0-9]*"> => Parameter { type_name, name: name.to_string() }
+};
+
+StatementList: Vec<Statement> = {
+    <mut stmts:Statement*> => stmts
+};
+
+Statement: Statement = {
+    DeclarationStatement,
+    IfStatement,
+    ExpressionStatement,
+};
+
+DeclarationStatement: Statement = {
+    <type_name:Type> <name:r"[a-zA-Z_][a-zA-Z_0-9]*"> "=" <init:Expression> ";" => Statement::Declaration {
+        type_name,
+        name: name.to_string(),
+        initializer: Box::new(init),
+    }
+};
+
+IfStatement: Statement = {
+    "if" "(" <cond:Expression> ")" "{" <block:StatementList> "}" => Statement::If {
+        condition: Box::new(cond),
+        if_block: block,
+    }
+};
+
+ExpressionStatement: Statement = {
+    <expr:Expression> ";" => Statement::Expression(Box::new(expr))
+};
+
+// Operator Precedence Rules
+// Lower rules have higher precedence.
+Expression: Expression = {
+    Assignment
+};
+
+Assignment: Expression = {
+    <name:r"[a-zA-Z_][a-zA-Z_0-9]*"> "=" <val:Assignment> => Expression::Assignment { name: name.to_string(), value: Box::new(val) },
+    Equality,
+};
+
+Equality: Expression = {
+    <l:Equality> <op:EqOp> <r:Comparison> => Expression::BinaryOp { op, left: Box::new(l), right: Box::new(r) },
+    Comparison,
+};
+
+Comparison: Expression = {
+    <l:Comparison> <op:CmpOp> <r:Term> => Expression::BinaryOp { op, left: Box::new(l), right: Box::new(r) },
+    Term,
+};
+
+Term: Expression = {
+    <l:Term> <op:TermOp> <r:Factor> => Expression::BinaryOp { op, left: Box::new(l), right: Box::new(r) },
+    Factor,
+};
+
+Factor: Expression = {
+    <l:Factor> <op:FactorOp> <r:Primary> => Expression::BinaryOp { op, left: Box::new(l), right: Box::new(r) },
+    Primary,
+};
+
+Primary: Expression = {
+    r"[a-zA-Z_][a-zA-Z_0-9]*" => Expression::Identifier(<>.to_string()),
+    r"[0-9]+" => Expression::IntLiteral(<>.parse().unwrap()),
+    r"[0-9]+\.[0-9]+" => Expression::FloatLiteral(<>.parse().unwrap()),
+    "true" => Expression::BoolLiteral(true),
+    "false" => Expression::BoolLiteral(false),
+    "(" <Expression> ")",
+};
+
+// Helper rules for operator types
+EqOp: BinaryOp = {
+    "==" => BinaryOp::Equal,
+    "!=" => BinaryOp::NotEqual,
+};
+
+CmpOp: BinaryOp = {
+    "<" => BinaryOp::LessThan,
+    ">" => BinaryOp::GreaterThan,
+    "<=" => BinaryOp::LessThanOrEqual,
+    ">=" => BinaryOp::GreaterThanOrEqual,
+};
+
+TermOp: BinaryOp = {
+    "+" => BinaryOp::Add,
+    "-" => BinaryOp::Subtract,
+};
+
+FactorOp: BinaryOp = {
+    "*" => BinaryOp::Multiply,
+    "/" => BinaryOp::Divide,
+};
+
+// CORRECTED RULE: Use the direct token literals.
+Type: Type = {
+    "float" => Type::Float,
+    "int" => Type::Int,
+    "bool" => Type::Bool,
+};
