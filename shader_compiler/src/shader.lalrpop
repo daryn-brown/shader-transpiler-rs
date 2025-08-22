@@ -48,6 +48,7 @@ match {
 
     // Ignore whitespace
     r"\s*" => { },
+    "assert" => "ASSERT",
 }
 
 // Define the parsing rules (non-terminals).
@@ -80,6 +81,13 @@ Statement: Statement = {
     DeclarationStatement,
     IfStatement,
     ExpressionStatement,
+    AssertStatement,
+};
+
+AssertStatement: Statement = {
+    "ASSERT" "(" <cond:Expression> ")" ";" => Statement::Assert {
+        condition: Box::new(cond),
+    }
 };
 
 DeclarationStatement: Statement = {

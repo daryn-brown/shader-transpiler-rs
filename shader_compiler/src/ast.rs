@@ -38,6 +38,9 @@ pub enum Statement {
         // else_block can be added later
     },
     Expression(Box<Expression>),
+    Assert {
+        condition: Box<Expression>,
+    },
 }
 
 #[derive(Debug, PartialEq)]

@@ -47,8 +47,8 @@ impl SemanticAnalyzer {
                 name,
                 initializer,
             } => {
-                // Check the expression on the right-hand side first.
-                self.visit_expression(initializer)?;
+                // Check the expression and get its type
+                let expr_type = self.visit_expression(initializer)?;
 
                 // Add the new variable to the symbol table.
                 println!("Declaring variable '{}' with type {:?}", name, type_name);
@@ -59,44 +59,52 @@ impl SemanticAnalyzer {
                 if_block,
                 ..
             } => {
-                self.visit_expression(condition)?;
+                let condition_type = self.visit_expression(condition)?;
                 for stmt in if_block {
                     self.visit_statement(stmt)?;
                 }
             }
             Statement::Expression(expr) => {
-                self.visit_expression(expr)?;
+                let _expr_type = self.visit_expression(expr)?;
+            }
+            Statement::Assert { condition } => {
+                let condition_type = self.visit_expression(condition)?;
+                if condition_type != Type::Bool {
+                    return Err("Assert condition must be a bool".to_string());
+                }
             }
         }
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &Expression) -> Result<(), String> {
+    fn visit_expression(&mut self, expression: &Expression) -> Result<Type, String> {
         match expression {
             Expression::Identifier(name) => {
-                // This is a crucial check: does the variable exist?
-                if !self.symbol_table.contains_key(name) {
-                    return Err(format!("Undeclared variable: {}", name));
+                if let Some(t) = self.symbol_table.get(name) {
+                    println!("Found usage of variable '{}'", name);
+                    Ok(t.clone())
+                } else {
+                    Err(format!("Undeclared variable: {}", name))
                 }
-                println!("Found usage of variable '{}'", name);
             }
             Expression::Assignment { name, value } => {
-                // Check if the variable we're assigning to was declared.
-                if !self.symbol_table.contains_key(name) {
-                    return Err(format!("Undeclared variable in assignment: {}", name));
+                if let Some(t) = self.symbol_table.get(name).cloned() {
+                    let value_type = self.visit_expression(value)?;
+                    // Optionally check t == value_type here
+                    Ok(t)
+                } else {
+                    Err(format!("Undeclared variable in assignment: {}", name))
                 }
-                // Also check the expression on the right-hand side.
-                self.visit_expression(value)?;
             }
-            Expression::BinaryOp { left, right, .. } => {
-                self.visit_expression(left)?;
-                self.visit_expression(right)?;
+            Expression::BinaryOp { op, left, right } => {
+                let left_type = self.visit_expression(left)?;
+                let right_type = self.visit_expression(right)?;
+                // Add type checking logic for operators here
+                Ok(left_type) // or whatever is appropriate
             }
-            // Literals are always valid, so we do nothing.
-            Expression::IntLiteral(_)
-            | Expression::FloatLiteral(_)
-            | Expression::BoolLiteral(_) => {}
+            Expression::IntLiteral(_) => Ok(Type::Int),
+            Expression::FloatLiteral(_) => Ok(Type::Float),
+            Expression::BoolLiteral(_) => Ok(Type::Bool),
         }
-        Ok(())
     }
 }
