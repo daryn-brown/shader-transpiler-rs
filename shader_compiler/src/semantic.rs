@@ -47,9 +47,15 @@ impl SemanticAnalyzer {
                 name,
                 initializer,
             } => {
+                // Check for redeclaration
+                if self.symbol_table.contains_key(name) {
+                    return Err(format!("Redeclaration of variable: {}", name));
+                }
                 // Check the expression and get its type
                 let expr_type = self.visit_expression(initializer)?;
-
+                if expr_type != *type_name {
+                    return Err(format!("Type mismatch in declaration of '{}': declared {:?}, got {:?}", name, type_name, expr_type));
+                }
                 // Add the new variable to the symbol table.
                 println!("Declaring variable '{}' with type {:?}", name, type_name);
                 self.symbol_table.insert(name.clone(), type_name.clone());
@@ -60,6 +66,9 @@ impl SemanticAnalyzer {
                 ..
             } => {
                 let condition_type = self.visit_expression(condition)?;
+                if condition_type != Type::Bool {
+                    return Err("If condition must be a bool".to_string());
+                }
                 for stmt in if_block {
                     self.visit_statement(stmt)?;
                 }
@@ -88,17 +97,19 @@ impl SemanticAnalyzer {
                 }
             }
             Expression::Assignment { name, value } => {
-                if let Some(t) = self.symbol_table.get(name).cloned() {
+                if let Some(var_type) = self.symbol_table.get(name).cloned() {
                     let value_type = self.visit_expression(value)?;
-                    // Optionally check t == value_type here
-                    Ok(t)
+                    if var_type != value_type {
+                        return Err(format!("Type mismatch in assignment to '{}': variable {:?}, assigned {:?}", name, var_type, value_type));
+                    }
+                    Ok(var_type)
                 } else {
                     Err(format!("Undeclared variable in assignment: {}", name))
                 }
             }
-            Expression::BinaryOp { op, left, right } => {
+            Expression::BinaryOp { op: _, left, right } => {
                 let left_type = self.visit_expression(left)?;
-                let right_type = self.visit_expression(right)?;
+                let _right_type = self.visit_expression(right)?;
                 // Add type checking logic for operators here
                 Ok(left_type) // or whatever is appropriate
             }

@@ -58,4 +58,93 @@ fn main() {
             println!("{}", e);
         }
     }
+
+    let test_cases = [
+        (
+            "Valid assert",
+            r#"
+            float my_func(int a) {
+                float c = 1.0;
+                assert(a > 0);
+            }
+            "#
+        ),
+        (
+            "Assert with type error",
+            r#"
+            float my_func(int a) {
+                float c = 1.0;
+                assert(c); 
+            }
+            "#
+        ),
+        (
+            "Undeclared variable",
+            r#"
+            float my_func(int a) {
+                assert(b > 0); 
+            }
+            "#
+        ),
+        (
+            "Assert with boolean literal",
+            r#"
+            float my_func(int a) {
+                assert(true);
+            }
+            "#
+        ),
+        (
+            "Assignment type mismatch",
+            r#"
+            float my_func(int a) {
+                int x = 5;
+                x = 3.14;
+            }
+            "#
+        ),
+        (
+            "Redeclaration of variable",
+            r#"
+            float my_func(int a) {
+                int x = 1;
+                int x = 2;
+            }
+            "#
+        ),
+        (
+            "If condition not boolean",
+            r#"
+            float my_func(int a) {
+                if (a) {
+                    int x = 1;
+                }
+            }
+            "#
+        ),
+        (
+            "Use before declaration",
+            r#"
+            float my_func(int a) {
+                x = 5;
+                int x = 1;
+            }
+            "#
+        ),
+    ];
+
+    for (desc, src) in test_cases {
+        println!("\n--- Test: {desc} ---");
+        let parser = shader::TranslationUnitParser::new();
+        match parser.parse(src) {
+            Ok(ast) => {
+                let mut analyzer = semantic::SemanticAnalyzer::new();
+                match analyzer.analyze(&ast) {
+                    Ok(_) => println!("Semantic analysis passed!"),
+                    Err(e) => println!("Semantic analysis failed: {e}"),
+                }
+            }
+            Err(e) => println!("Parse failed: {e}"),
+        }
+    }
 }
